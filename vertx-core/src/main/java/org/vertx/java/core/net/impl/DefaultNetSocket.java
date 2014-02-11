@@ -115,7 +115,6 @@ public class DefaultNetSocket extends ConnectionBase implements NetSocket {
     if (!paused) {
       return this;
     }
-    paused = false;
     if (pendingData != null) {
       for (;;) {
         final Buffer buf = pendingData.poll();
@@ -125,11 +124,13 @@ public class DefaultNetSocket extends ConnectionBase implements NetSocket {
         vertx.runOnContext(new VoidHandler() {
           @Override
           protected void handle() {
-            handleDataReceived(buf);
+            handleDataReceived0(buf);
           }
         });
       }
     }
+    paused = false;
+
     doResume();
     return this;
   }
@@ -258,6 +259,10 @@ public class DefaultNetSocket extends ConnectionBase implements NetSocket {
       pendingData.add(data);
       return;
     }
+    handleDataReceived0(data);
+  }
+
+  private void handleDataReceived0(Buffer data) {
     if (dataHandler != null) {
       setContext();
       try {
