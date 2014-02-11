@@ -258,6 +258,19 @@ public class DefaultNetSocket extends ConnectionBase implements NetSocket {
       }
       pendingData.add(data);
       return;
+    } else {
+      // consume everything pending which may be a left-over
+      // This is needed as netty may trigger an IO operation in between
+      // handling submitted tasks on the EventLoop.
+      if (pendingData != null) {
+        for (;;) {
+          final Buffer buf = pendingData.poll();
+          if (buf == null) {
+            break;
+          }
+          handleDataReceived0(buf);
+        }
+      }
     }
     handleDataReceived0(data);
   }

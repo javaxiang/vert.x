@@ -186,6 +186,15 @@ public class DefaultHttpClientResponse implements HttpClientResponse  {
       }
       pausedChunks.add(data);
     } else {
+      // consume all previous paused chunks if any are left
+      // This is needed as netty may trigger an IO operation in between
+      // handling submitted tasks on the EventLoop.
+      if (pausedChunks != null) {
+        Buffer chunk;
+        while ((chunk = pausedChunks.poll()) != null) {
+          handleChunk0(chunk);
+        }
+      }
       handleChunk0(data);
     }
   }
