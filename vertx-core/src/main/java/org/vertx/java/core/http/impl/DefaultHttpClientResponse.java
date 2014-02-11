@@ -27,10 +27,7 @@ import org.vertx.java.core.buffer.Buffer;
 import org.vertx.java.core.http.HttpClientResponse;
 import org.vertx.java.core.net.NetSocket;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 /**
  *
@@ -134,8 +131,8 @@ public class DefaultHttpClientResponse implements HttpClientResponse  {
 
   @Override
   public HttpClientResponse resume() {
-    paused = false;
     doResume();
+    paused = false;
     conn.doResume();
     return this;
   }
@@ -164,7 +161,7 @@ public class DefaultHttpClientResponse implements HttpClientResponse  {
         vertx.runOnContext(new VoidHandler() {
           @Override
           protected void handle() {
-            handleChunk(theChunk);
+            handleChunk0(theChunk);
           }
         });
       }
@@ -174,7 +171,7 @@ public class DefaultHttpClientResponse implements HttpClientResponse  {
       vertx.runOnContext(new VoidHandler() {
         @Override
         protected void handle() {
-          handleEnd(theTrailer);
+          handleEnd0(theTrailer);
         }
       });
       hasPausedEnd = false;
@@ -185,14 +182,18 @@ public class DefaultHttpClientResponse implements HttpClientResponse  {
   void handleChunk(Buffer data) {
     if (paused) {
       if (pausedChunks == null) {
-        pausedChunks = new LinkedList<>();
+        pausedChunks = new ArrayDeque<>();
       }
       pausedChunks.add(data);
     } else {
-      request.dataReceived();
-      if (dataHandler != null) {
-        dataHandler.handle(data);
-      }
+      handleChunk0(data);
+    }
+  }
+
+  private void handleChunk0(Buffer data) {
+    request.dataReceived();
+    if (dataHandler != null) {
+      dataHandler.handle(data);
     }
   }
 
@@ -201,11 +202,15 @@ public class DefaultHttpClientResponse implements HttpClientResponse  {
       hasPausedEnd = true;
       pausedTrailer = trailer;
     } else {
-      this.trailer = trailer;
-      trailers = new HttpHeadersAdapter(trailer.trailingHeaders());
-      if (endHandler != null) {
-        endHandler.handle(null);
-      }
+      handleEnd0(trailer);
+    }
+  }
+
+  private void handleEnd0(LastHttpContent trailer) {
+    this.trailer = trailer;
+    trailers = new HttpHeadersAdapter(trailer.trailingHeaders());
+    if (endHandler != null) {
+      endHandler.handle(null);
     }
   }
 
